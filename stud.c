@@ -96,6 +96,7 @@ static struct addrinfo *backaddr;
 static pid_t master_pid;
 static ev_io listener;
 static int listener_socket;
+static int frontend_port;
 static int child_num;
 static pid_t *child_pids;
 static SSL_CTX *default_ctx;
@@ -815,7 +816,7 @@ char *prepare_xff_line(struct sockaddr* ai_addr) {
         size_t res = snprintf(xff_line,
                 sizeof(xff_line),
                 "X-Forwarded-Proto: https\r\nX-Forwarded-Port: %d\r\nX-Forwarded-For: %s\r\n",
-                ntohs(addr->sin_port),
+                frontend_port,
                 inet_ntoa(addr->sin_addr));
         assert(res < sizeof(xff_line));
         return xff_line;
@@ -826,7 +827,7 @@ char *prepare_xff_line(struct sockaddr* ai_addr) {
       size_t res = snprintf(xff_line,
                             sizeof(xff_line),
                             "X-Forwarded-Proto: https\r\nX-Forwarded-Port: %d\r\nX-Forwarded-For:%s\r\n",
-                            ntohs(addr->sin6_port),
+                            frontend_port,
                             tcp6_address_string);
       assert(res < sizeof(xff_line));
       return xff_line;
@@ -1899,6 +1900,14 @@ int main(int argc, char **argv) {
     init_globals();
 
     listener_socket = create_main_socket();
+    {
+       struct sockaddr_in sin;
+       socklen_t len = sizeof(sin);
+       if (getsockname(listener_socket, (struct sockaddr *)&sin, &len) == -1)
+           ERR("{core} getsockname failed");
+       else
+           frontend_port = ntohs(sin.sin_port);
+    }
 
 #ifdef USE_SHARED_CACHE
     if (CONFIG->SHCUPD_PORT) {
