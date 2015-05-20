@@ -806,7 +806,7 @@ static void prepare_proxy_line(struct sockaddr* ai_addr) {
 }
 
 char *prepare_xff_line(struct sockaddr* ai_addr) {
-    static char xff_line[128];
+    static char xff_line[256];
     xff_line[0] = 0;
     char tcp6_address_string[INET6_ADDRSTRLEN];
 
@@ -814,7 +814,8 @@ char *prepare_xff_line(struct sockaddr* ai_addr) {
         struct sockaddr_in* addr = (struct sockaddr_in*)ai_addr;
         size_t res = snprintf(xff_line,
                 sizeof(xff_line),
-                "X-Forwarded-For: %s\r\n",
+                "X-Forwarded-Proto: https\r\nX-Forwarded-Port: %d\r\nX-Forwarded-For: %s\r\n",
+                ntohs(addr->sin_port),
                 inet_ntoa(addr->sin_addr));
         assert(res < sizeof(xff_line));
         return xff_line;
@@ -824,7 +825,8 @@ char *prepare_xff_line(struct sockaddr* ai_addr) {
       inet_ntop(AF_INET6,&(addr->sin6_addr),tcp6_address_string,INET6_ADDRSTRLEN);
       size_t res = snprintf(xff_line,
                             sizeof(xff_line),
-                            "X-Forwarded-For:%s\r\n",
+                            "X-Forwarded-Proto: https\r\nX-Forwarded-Port: %d\r\nX-Forwarded-For:%s\r\n",
+                            ntohs(addr->sin6_port),
                             tcp6_address_string);
       assert(res < sizeof(xff_line));
       return xff_line;
